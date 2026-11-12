@@ -22,7 +22,9 @@ let galleryScrollY=0;
 function showGallery(preserveScroll){let grid=$('galleryGrid');if(!preserveScroll){$('galleryTitle').textContent=`${deckLabel[currentDeckKey]}の一覧(${currentDeckWorks.length}${unitFor(currentDeckKey)})`;grid.innerHTML='';let frag=document.createDocumentFragment();currentDeckWorks.forEach(w=>{let div=document.createElement('div');div.className='galleryItem';div.onclick=()=>openFromGallery(w);let cap=document.createElement('div');cap.className='cap';let t=document.createElement('div');t.className='t';t.innerHTML=w.title;let a=document.createElement('div');a.className='a';a.innerHTML=w.artist;cap.appendChild(t);cap.appendChild(a);if(w.image){let img=document.createElement('img');img.src=w.image;img.loading='lazy';div.appendChild(img)}div.appendChild(cap);frag.appendChild(div)});grid.appendChild(frag)}screens('galleryScreen');window.scrollTo(0,preserveScroll?galleryScrollY:0)}
 function applyAnswerDisplay(w){
   if(w.question){$('aQuestion').innerHTML=w.question;$('aQuestion').classList.remove('hidden')}else{$('aQuestion').classList.add('hidden')}
-  $('title').innerHTML=w.title;
+  let _t=w.title,_x=w.explanation;
+  if(w.choices&&w._perm){let ci=w._perm.indexOf(w.correctIndex);_t=CIRC[ci]+' '+strip1(w.choices[w.correctIndex]);if(_x)_x=_x.replace(/[①②③④]/g,c=>CIRC[w._perm.indexOf(CIRC.indexOf(c))])}
+  $('title').innerHTML=_t;
   if(w.artist){$('artist').innerHTML=w.artist;$('artist').classList.remove('hidden')}else{$('artist').classList.add('hidden')}
   if(w.era){
     $('detailEra').textContent=[w.era,w.life].filter(Boolean).join('／');$('detailEra').classList.remove('hidden');
@@ -35,7 +37,7 @@ function applyAnswerDisplay(w){
     $('detailEra').classList.add('hidden');
     $('detailSpec').classList.add('hidden');
     $('artistTriviaBox').classList.add('hidden');
-    $('workTriviaLabel').textContent='解説';$('workTrivia').textContent=w.explanation;
+    $('workTriviaLabel').textContent='解説';$('workTrivia').textContent=_x;
     $('detailPanel').classList.remove('hidden');
   }else{
     $('detailPanel').classList.add('hidden');
@@ -88,11 +90,14 @@ function orderClick(){
   pts.forEach(p=>{let b=document.createElement('button');b.type='button';b.textContent=p.label;b.onclick=()=>startQueue(currentDeckWorks.slice(p.index));box.appendChild(b)});
   screens('orderStart');
 }
-function show(){state=null;let w=queue[pos];if(w.image){$('pic').src=w.image;$('pic').parentElement.classList.remove('hidden')}else{$('pic').src='';$('pic').parentElement.classList.add('hidden')}$('count').textContent=`問題 ${pos+1} / ${queue.length}`;$('bar').style.width=((pos)/queue.length*100)+'%';if(w.question){$('qText').innerHTML=w.question;$('qSub').textContent='答えを頭の中で考えてください'}else{$('qText').innerHTML='この絵は誰の何?';$('qSub').textContent='作者名と作品名を頭の中で答えてください'}if(w.choices){$('kdBox').classList.add('hidden');$('choicesBox').classList.remove('hidden');w.choices.forEach((c,i)=>{let b=$('c'+i);b.textContent=c;b.disabled=false;b.className='btn choiceBtn'})}else{$('choicesBox').classList.add('hidden');$('kdBox').classList.remove('hidden')}$('question').classList.remove('hidden');$('answer').classList.add('hidden');$('mistake').classList.add('hidden');$('prev').disabled=pos<=0;window.scrollTo(0,0)}
+const CIRC='①②③④';
+function strip1(c){return c.replace(/^[①②③④]\s*/,'')}
+function shufflePerm(){let p=[0,1,2,3];for(let i=3;i;i--){let j=Math.floor(Math.random()*(i+1));[p[i],p[j]]=[p[j],p[i]]}return p}
+function show(){state=null;let w=queue[pos];if(w.image){$('pic').src=w.image;$('pic').parentElement.classList.remove('hidden')}else{$('pic').src='';$('pic').parentElement.classList.add('hidden')}$('count').textContent=`問題 ${pos+1} / ${queue.length}`;$('bar').style.width=((pos)/queue.length*100)+'%';if(w.question){$('qText').innerHTML=w.question;$('qSub').textContent='答えを頭の中で考えてください'}else{$('qText').innerHTML='この絵は誰の何?';$('qSub').textContent='作者名と作品名を頭の中で答えてください'}if(w.choices){$('kdBox').classList.add('hidden');$('choicesBox').classList.remove('hidden');w._perm=shufflePerm();w._perm.forEach((o,i)=>{let b=$('c'+i);b.textContent=CIRC[i]+' '+strip1(w.choices[o]);b.disabled=false;b.className='btn choiceBtn'})}else{$('choicesBox').classList.add('hidden');$('kdBox').classList.remove('hidden')}$('question').classList.remove('hidden');$('answer').classList.add('hidden');$('mistake').classList.add('hidden');$('prev').disabled=pos<=0;window.scrollTo(0,0)}
 function prev(){if(viewMode==='gallery'||pos<=0)return;pos--;show()}
 function reveal(s){if(state)return;state=s;let w=queue[pos];$('badge').className='badge';$('answerBtns').classList.remove('single');if(s==='ok'){ok++;$('badge').textContent='わかった';$('mistake').classList.remove('hidden');missed=missed.filter(id=>id!==w.id)}else{ng++;$('badge').textContent='わからない';if(!missed.includes(w.id))missed.push(w.id)}saveMissed();applyAnswerDisplay(w);$('question').classList.add('hidden');$('answer').classList.remove('hidden');refreshReview()}
 function mistake(){if(state!=='ok')return;ok--;ng++;state='ng';let id=queue[pos].id;if(!missed.includes(id))missed.push(id);saveMissed();$('badge').textContent='分かってなかった';$('mistake').classList.add('hidden');refreshReview()}
-function chooseAnswer(i){if(state)return;let w=queue[pos];let correct=i===w.correctIndex;state=correct?'ok':'ng';if(correct){ok++;missed=missed.filter(id=>id!==w.id)}else{ng++;if(!missed.includes(w.id))missed.push(w.id)}saveMissed();for(let j=0;j<4;j++){let b=$('c'+j);b.disabled=true;b.classList.remove('correct','wrong');if(j===w.correctIndex)b.classList.add('correct');else if(j===i)b.classList.add('wrong')}$('badge').classList.remove('hidden');$('badge').className='badge'+(correct?'':' bad');$('badge').textContent=correct?'正解':'不正解';applyAnswerDisplay(w);$('question').classList.add('hidden');$('answer').classList.remove('hidden');$('answerBtns').classList.add('single');refreshReview()}
+function chooseAnswer(i){if(state)return;let w=queue[pos];let perm=w._perm||[0,1,2,3];let ci=perm.indexOf(w.correctIndex);let correct=i===ci;state=correct?'ok':'ng';if(correct){ok++;missed=missed.filter(id=>id!==w.id)}else{ng++;if(!missed.includes(w.id))missed.push(w.id)}saveMissed();for(let j=0;j<4;j++){let b=$('c'+j);b.disabled=true;b.classList.remove('correct','wrong');if(j===ci)b.classList.add('correct');else if(j===i)b.classList.add('wrong')}$('badge').classList.remove('hidden');$('badge').className='badge'+(correct?'':' bad');$('badge').textContent=correct?'正解':'不正解';applyAnswerDisplay(w);$('question').classList.add('hidden');$('answer').classList.remove('hidden');$('answerBtns').classList.add('single');refreshReview()}
 function next(){if(viewMode==='gallery'){showGallery(true);return}pos++;if(pos>=queue.length){$('bar').style.width='100%';$('oknum').textContent=ok;$('ngnum').textContent=ng;$('okLabel').textContent=c3(currentDeckKey)?'正解':'わかった';$('ngLabel').textContent=c3(currentDeckKey)?'不正解':'わからない';$('finishReview').textContent=(c3(currentDeckKey)?'間違えた':'分からなかった')+'問題を復習';screens('finish')}else show()}
 document.querySelectorAll('#deckBtns [data-deck]').forEach(b=>b.onclick=()=>chooseDeck(b.dataset.deck));
 $('order').onclick=orderClick;
